@@ -4,3 +4,4 @@ models/
 pretrained/
 export/
 *.pb
+.vscode

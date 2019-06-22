@@ -3,7 +3,7 @@ from detector import SSD
 from detector.anchor_generator import AnchorGenerator
 from detector.box_predictor import RetinaNetBoxPredictor
 from detector.feature_extractor import RetinaNetFeatureExtractor
-from detector.backbones import mobilenet_v1, shufflenet_v2
+from detector.backbones import mobilenet_v1, shufflenet_v2, resnet, hrnet
 from metrics import Evaluator
 
 
@@ -29,6 +29,19 @@ def model_fn(features, labels, mode, params):
                 images, is_training,
                 depth_multiplier=str(params['depth_multiplier'])
             )
+        elif params['backbone'] == 'resnet':
+            return resnet(
+                images, is_training,
+                block_sizes=params['block_sizes'],
+                enableBN=params['enableBN']
+            )
+        # elif params['backbone'] == 'hrnet':
+        #     return hrnet(
+        #         images, is_training,
+        #         width=params['width'],
+        #     )
+        else:
+            raise NotImplementedError
 
     # add additional layers to the base network
     feature_extractor = RetinaNetFeatureExtractor(is_training, backbone)
@@ -112,16 +125,23 @@ def model_fn(features, labels, mode, params):
         )
         tf.summary.scalar('learning_rate', learning_rate)
 
-    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    # TODO: SyncBN support
+    if params['enableBN']:
+        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops), tf.variable_scope('optimizer'):
-        optimizer = tf.train.AdamOptimizer(learning_rate)
-        grads_and_vars = optimizer.compute_gradients(total_loss)
+        var_list = tf.trainable_variables()
+        if params.has_key('freeze_at'):
+            # remove freezed vars from var_list
+            pass
+        optimizer = tf.train.MomentumOptimizer(learning_rate, momentum=0.9)
+        grads_and_vars = optimizer.compute_gradients(total_loss, var_list)
         train_op = optimizer.apply_gradients(grads_and_vars, global_step)
 
     for g, v in grads_and_vars:
         tf.summary.histogram(v.name[:-2] + '_hist', v)
         tf.summary.histogram(v.name[:-2] + '_grad_hist', g)
 
+    # TODO: chech if ema helps.
     with tf.control_dependencies([train_op]), tf.name_scope('ema'):
         ema = tf.train.ExponentialMovingAverage(decay=MOVING_AVERAGE_DECAY, num_updates=global_step)
         train_op = ema.apply(tf.trainable_variables())

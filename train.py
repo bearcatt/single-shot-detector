@@ -61,6 +61,7 @@ estimator = tf.estimator.Estimator(
 train_spec = tf.estimator.TrainSpec(train_input_fn, max_steps=params['num_steps'])
 eval_spec = tf.estimator.EvalSpec(
     val_input_fn, steps=None, start_delay_secs=3600 * 3, throttle_secs=3600 * 3,
+    # TODO: remove this when not using ema
     hooks=[RestoreMovingAverageHook(params['model_dir'])]
 )
 tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
