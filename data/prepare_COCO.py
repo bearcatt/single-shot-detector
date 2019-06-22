@@ -6,14 +6,21 @@ from tqdm import tqdm
 import sys
 from pycocotools.coco import COCO
 
-DATA_DIR = '/mnt/coco'
-DATA_TYPE = 'train2017'
-RESULT_PATH = '/mnt/coco/train_annotations/'
+DATA_DIR = sys.argv[1]
+DATA_TYPE = sys.argv[2]
+RESULT_PATH = sys.argv[3]
 
-# DATA_TYPE = 'val2017'
+# DATA_DIR = '/mnt/coco'
+# DATA_TYPE = 'train2014'
+# RESULT_PATH = '/mnt/coco/train_annotations/'
+# DATA_TYPE = 'instances_valminusminival2014'
+# RESULT_PATH = '/mnt/coco/train_annotations/'
+# DATA_TYPE = 'val2014'
 # RESULT_PATH = '/mnt/coco/val_annotations/'
 
 coco = COCO('{}/annotations/instances_{}.json'.format(DATA_DIR, DATA_TYPE))
+categories = coco.loadCats(coco.getCatIds())
+coco_id_to_name = {c['id']: c['name'] for c in categories}
 
 catIds = coco.getCatIds()
 imgIds = coco.getImgIds()
